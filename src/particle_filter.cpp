@@ -59,8 +59,15 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
     
     default_random_engine gen;
     for (vector<Particle>::iterator it = particles.begin(); it < particles.end(); it++) {
-        double x_f = it->x + (velocity / yaw_rate) * (sin(it->theta + yaw_rate * delta_t) - sin(it->theta));
-        double y_f = it->y + (velocity / yaw_rate) * (cos(it->theta) - cos(it->theta + yaw_rate * delta_t));
+        double x_f, y_f;
+        if (yaw_rate > 0) {
+            x_f = it->x + (velocity / yaw_rate) * (sin(it->theta + yaw_rate * delta_t) - sin(it->theta));
+            y_f = it->y + (velocity / yaw_rate) * (cos(it->theta) - cos(it->theta + yaw_rate * delta_t));
+        } else {
+            x_f = it->x + velocity * delta_t * cos(it->theta);
+            y_f = it->y + velocity * delta_t * sin(it->theta);
+        }
+        
         double theta_f = it->theta + yaw_rate * delta_t;
 
         double std_x = std_pos[0];
@@ -158,20 +165,8 @@ void ParticleFilter::resample() {
         newParticles.push_back(sample);
     }
     
-/*
-    cout << "Current particles " << endl;
-    for (auto particle : particles) {
-        cout << "w: " << particle.weight << " (" << particle.x << ", " << particle.y << ") " << particle.theta << endl;
-    }
-*/
     particles = newParticles;
 
-/*
-    cout << "AFter resampling" << endl;
-    for (auto particle : particles) {
-        cout << "w: " << particle.weight << " (" << particle.x << ", " << particle.y << ") " << particle.theta << endl;
-    }
-*/
 }
 
 Particle ParticleFilter::SetAssociations(Particle particle, std::vector<int> associations, std::vector<double> sense_x, std::vector<double> sense_y)
