@@ -5,6 +5,7 @@
  *      Author: Tiffany Huang
  */
 
+#include <float.h>
 #include <random>
 #include <algorithm>
 #include <iostream>
@@ -14,8 +15,8 @@
 #include <sstream>
 #include <string>
 #include <iterator>
-#include <cmath>
 
+#include "helper_functions.h"
 #include "particle_filter.h"
 
 using namespace std;
@@ -74,8 +75,6 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
         it->y = dist_y(gen);
         it->theta = dist_theta(gen);
     }
-
-
 }
 
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
@@ -98,13 +97,81 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
+
+    // TODO: filter out those out of sensor range
+
+    for (vector<Particle>::iterator particleIt = particles.begin(); particleIt < particles.end(); particleIt++) {
+      // Find the closest landmark for each observation.
+      //vector<Map::single_landmark_s> closestLandmarks;
+      particleIt->weight = 1;
+      for (vector<LandmarkObs>::iterator obsIt = observations.begin(); obsIt < observations.end(); obsIt++) {
+          double obsMapX = obsIt->x * cos(particleIt->theta) - obsIt->y * sin(particleIt->theta) + particleIt->x;
+          double obsMapY = obsIt->x * sin(particleIt->theta) + obsIt->y * cos(particleIt->theta) + particleIt->y;
+
+          Map::single_landmark_s closestLandmark;
+          double smallest_dist = DBL_MAX;
+          for (vector<Map::single_landmark_s>::iterator landmarkIt = map_landmarks.landmark_list.begin();
+               landmarkIt < map_landmarks.landmark_list.end();
+               landmarkIt++) {
+            double d = dist(landmarkIt->x_f, landmarkIt->y_f, obsMapX, obsMapY);
+            if (d < smallest_dist) {
+                closestLandmark = *landmarkIt;
+                smallest_dist = d;
+            }       
+          }
+          //closestLandmarks.push_back(closestLandmark);
+          double std_x = std_landmark[0];
+          double std_y = std_landmark[1];
+          double p_xy = exp(-(
+              pow(obsMapX - closestLandmark.x_f, 2) / (2 * pow(std_x, 2)) + 
+              pow(obsMapY - closestLandmark.y_f, 2) / (2 * pow(std_y, 2))));
+          p_xy /= (2 * M_PI * std_x * std_y);
+
+          particleIt->weight *= p_xy;
+      }
+    }
+
+    // Normalize
+    double weightSum = 0;
+    for (auto particle : particles) {
+        weightSum += particle.weight;
+    }
+    for (auto& particle : particles) {
+        particle.weight /= weightSum;
+    }
 }
 
 void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
+    vector<double> weights;
+    for (auto particle : particles) {
+        weights.push_back(particle.weight);
+    }
+    discrete_distribution<> dist(weights.begin(), weights.end());
+    vector<Particle> newParticles;
+    default_random_engine gen;
+    
+    for (int i = 0; i < num_particles; i++) {
+        Particle sample = particles[dist(gen)];
+        newParticles.push_back(sample);
+    }
+    
+/*
+    cout << "Current particles " << endl;
+    for (auto particle : particles) {
+        cout << "w: " << particle.weight << " (" << particle.x << ", " << particle.y << ") " << particle.theta << endl;
+    }
+*/
+    particles = newParticles;
 
+/*
+    cout << "AFter resampling" << endl;
+    for (auto particle : particles) {
+        cout << "w: " << particle.weight << " (" << particle.x << ", " << particle.y << ") " << particle.theta << endl;
+    }
+*/
 }
 
 Particle ParticleFilter::SetAssociations(Particle particle, std::vector<int> associations, std::vector<double> sense_x, std::vector<double> sense_y)
