@@ -57,12 +57,12 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
     
+    default_random_engine gen;
     for (vector<Particle>::iterator it = particles.begin(); it < particles.end(); it++) {
         double x_f = it->x + (velocity / yaw_rate) * (sin(it->theta + yaw_rate * delta_t) - sin(it->theta));
         double y_f = it->y + (velocity / yaw_rate) * (cos(it->theta) - cos(it->theta + yaw_rate * delta_t));
         double theta_f = it->theta + yaw_rate * delta_t;
 
-        default_random_engine gen;
         double std_x = std_pos[0];
         double std_y = std_pos[1];
         double std_theta = std_pos[2];
