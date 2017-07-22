@@ -105,28 +105,31 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
 
-    // TODO: filter out those out of sensor range
-
     for (vector<Particle>::iterator particleIt = particles.begin(); particleIt < particles.end(); particleIt++) {
+      // Filter out the landmarks that are too far away.
+      vector<Map::single_landmark_s> closeLandmarks;
+      for (auto landmark : map_landmarks.landmark_list) {
+        if (dist(landmark.x_f, landmark.y_f, particleIt->x, particleIt->y) <= sensor_range) {
+          closeLandmarks.push_back(landmark);  
+        }
+      }
+        
       // Find the closest landmark for each observation.
-      //vector<Map::single_landmark_s> closestLandmarks;
       particleIt->weight = 1;
+
       for (vector<LandmarkObs>::iterator obsIt = observations.begin(); obsIt < observations.end(); obsIt++) {
           double obsMapX = obsIt->x * cos(particleIt->theta) - obsIt->y * sin(particleIt->theta) + particleIt->x;
           double obsMapY = obsIt->x * sin(particleIt->theta) + obsIt->y * cos(particleIt->theta) + particleIt->y;
 
           Map::single_landmark_s closestLandmark;
           double smallest_dist = DBL_MAX;
-          for (vector<Map::single_landmark_s>::iterator landmarkIt = map_landmarks.landmark_list.begin();
-               landmarkIt < map_landmarks.landmark_list.end();
-               landmarkIt++) {
-            double d = dist(landmarkIt->x_f, landmarkIt->y_f, obsMapX, obsMapY);
+          for (auto landmark : closeLandmarks) {
+            double d = dist(landmark.x_f, landmark.y_f, obsMapX, obsMapY);
             if (d < smallest_dist) {
-                closestLandmark = *landmarkIt;
+                closestLandmark = landmark;
                 smallest_dist = d;
             }       
           }
-          //closestLandmarks.push_back(closestLandmark);
           double std_x = std_landmark[0];
           double std_y = std_landmark[1];
           double p_xy = exp(-(
