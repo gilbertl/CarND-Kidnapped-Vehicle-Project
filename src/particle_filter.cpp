@@ -14,12 +14,15 @@
 #include <sstream>
 #include <string>
 #include <iterator>
+#include <cmath>
 
 #include "particle_filter.h"
 
 using namespace std;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
+    num_particles = 20;
+
 	// TODO: Set the number of particles. Initialize all particles to first position (based on estimates of 
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
@@ -40,8 +43,11 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
         p.x = dist_x(gen);
         p.y = dist_y(gen);
         p.theta = dist_theta(gen);
+        p.weight = 1;
         particles.push_back(p);
     }
+
+    is_initialized = true;
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
@@ -49,6 +55,26 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	// NOTE: When adding noise you may find std::normal_distribution and std::default_random_engine useful.
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
+    
+    for (vector<Particle>::iterator it = particles.begin(); it < particles.end(); it++) {
+        double x_f = it->x + (velocity / yaw_rate) * (sin(it->theta + yaw_rate * delta_t) - sin(it->theta));
+        double y_f = it->y + (velocity / yaw_rate) * (cos(it->theta) - cos(it->theta + yaw_rate * delta_t));
+        double theta_f = it->theta + yaw_rate * delta_t;
+
+        default_random_engine gen;
+        double std_x = std_pos[0];
+        double std_y = std_pos[1];
+        double std_theta = std_pos[2];
+
+        normal_distribution<double> dist_x(x_f, std_x);
+        normal_distribution<double> dist_y(y_f, std_y);
+        normal_distribution<double> dist_theta(theta_f, std_theta);
+
+        it->x = dist_x(gen);
+        it->y = dist_y(gen);
+        it->theta = dist_theta(gen);
+    }
+
 
 }
 
